@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Write, Read};
 
 use clap::StructOpt;
 use reqwest::Client;
@@ -11,7 +11,7 @@ struct CommandLine {
     #[clap(short='o', long="--out")]
     pub output: Option<String>,
     #[clap(short='t', long="--text")]
-    pub text: String,
+    pub text: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -29,7 +29,14 @@ async fn main() {
     let cli = CommandLine::parse();
     let client = Client::new();
     let rq = client.post(TIKTOK_API_BASE);
-    let rq = rq.query(&[("req_text", &cli.text)]);
+    let text = if let Some(x) = cli.text {
+        x
+    } else {
+        let mut buf = String::new();
+        std::io::stdin().lock().read_to_string(&mut buf).unwrap();
+        buf
+    };
+    let rq = rq.query(&[("req_text", &text)]);
     let res = rq.send().await.unwrap();
     let res_text = res.text().await.unwrap();
     let f = serde_json::from_str::<ApiResp>(&res_text).unwrap();
